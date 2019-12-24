@@ -1,14 +1,6 @@
+
 #utility functions
-'''
-def min(remaining_time,n,finished):
-    re = 0
-    i=0
-    while i<n:
-        if (remaining_time[i]<remaining_time[re] and finished[i] == 0):
-            re = i
-        i+=1
-    return re 
-'''
+
 def isAnyoneNext(totalTime,finished,arriv,n):
     i = 0
     while(i<n):
