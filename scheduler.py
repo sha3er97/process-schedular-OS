@@ -1,31 +1,34 @@
 import numpy as np
 import sys
-#read = input("please enter the file name:\n")
-read = 'input.txt'
+import matplotlib.pyplot as plt
+
+read = input("please enter the file name to read:\n")
+#read = 'test.txt'
 
 #to be read from user by gui
 write = "result.txt"
-#contextSwitch = float(input("please enter context switch time:\n"))
-contextSwitch = 0.1
-#mode = int(input("please enter the mode:\n1. [15%] Non-Preemptive Highest Priority First.(HPF)\n2. [15%] First Come First Served. (FCFS)\n3. [20%] Round Robin with fixed time quantum.(RR)\n4. [20%] Preemptive Shortest Remaining Time Next.(SRTN)\n"))
-mode = 3
+contextSwitch = float(input("please enter context switch time:\n"))
+#contextSwitch = 0.5
+mode = int(input("please enter the mode:\n1. Non-Preemptive Highest Priority First.(HPF)\n2. First Come First Served. (FCFS)\n3. Round Robin with fixed time quantum.(RR)\n4. Preemptive Shortest Remaining Time Next.(SRTN)\n"))
+#mode = 2
 if mode == 3:
     quantum = float(input("please enter quantum time:\n"))
 else:
-    quantum = 0.01
-#quantum = 1
+    quantum = 0.01 #least possible time slot for .1f 
+    #quantum = 1   #if we used integers
 
 '''
 mode :
-1. [15%] Non-Preemptive Highest Priority First.(HPF)
-2. [15%] First Come First Served. (FCFS)
-3. [20%] Round Robin with fixed time quantum.(RR)
-4. [20%] Preemptive Shortest Remaining Time Next.(SRTN)
+1. Non-Preemptive Highest Priority First.(HPF)
+2. First Come First Served. (FCFS)
+3. Round Robin with fixed time quantum.(RR)
+4. Preemptive Shortest Remaining Time Next.(SRTN)
 '''
 
 r =  open(read,'r')
 w_file= open(write,"w+")
 
+#get processes number from file's first line.
 line = r.readline()
 data = line.split() #split string into a list
 n=int(data[0])
@@ -34,6 +37,8 @@ processno=np.zeros(n)
 arriv=np.zeros(n)
 burst =np.zeros(n)
 prio = np.zeros(n)
+
+#get data for each process and store them
 for i in range(n):
     line = r.readline()
     data = line.split() #split string into a list
@@ -42,24 +47,23 @@ for i in range(n):
     burst[i]=float(data[2])
     prio[i]=float(data[3])
 
-'''
-print("process no",processno,"\n")
-print("arriv",arriv,"\n")
-print("burst",burst,"\n")
-print("prio",prio,"\n")
-'''
+#close read file
+r.close()
+#########################################################################################
+
+#set diagram dimensions and axis
+
 s = 0
 if mode == 3 and contextSwitch != 0 :
     for i in range(n):
-        s += int(burst[i]/quantum)*0.1
+        s += int(burst[i]/quantum)*0.4
 
-totalTimeMax = np.sum(burst)+contextSwitch*n+s
-import matplotlib.pyplot as plt
+totalTimeMax = np.sum(burst)+contextSwitch*n+s*contextSwitch+np.max(arriv)
 w = 20
 h = 4
 d = 100
 plt.figure(figsize=(w, h), dpi=d)
-plt.axis([0, totalTimeMax*1.7, 0, n+2])
+plt.axis([0, totalTimeMax*1.7, -1, n+1])
 plt.xlabel('TimeStep')
 plt.ylabel('Process')
 
@@ -68,25 +72,10 @@ turnaroundtime=np.zeros(n)
 finish_time=np.zeros(n)
 finished=np.zeros(n)
 
-def min():
-    re = 0
-    i=0
-    while i<n:
-        if (remaining_time[i]<remaining_time[re] and finished[i] == 0):
-            re = i
-        i+=1
-    return re 
+from utility_funcs import *
+#################################################################################################
 
-def isAnyoneNext(totalTime):
-    i = 0
-    while(i<n):
-        if(totalTime>arriv[i] and finished[i] == 0):
-            break
-        i += 1
-    if i == n:
-        return False
-    else:
-        return True
+#scheduling algorithms :
 
 def FCFS_schedule():
     end_time=[]
@@ -94,24 +83,22 @@ def FCFS_schedule():
     process_id_list_FCFS =[]
     run_time_list_FCFS=[]
     totalTime=0
-    process_id_list_FCFS.append(0)
-    process_id_list_FCFS.append(processno[0])
-    run_time_list_FCFS.append(0)
+    process_id_list_FCFS.append(-1)
     run_time_list_FCFS.append(0)
 
-    while (not check_if_all_finished()):
+    while (not check_if_all_finished(finished,n)):
         i = 0
         while(i<n):
             if(totalTime>arriv[i] and finished[i] == 0):
                 break
             i += 1
         if i == n:
-            process_id_list_FCFS.append(0)
+            process_id_list_FCFS.append(-1)
             totalTime+=quantum
             run_time_list_FCFS.append(totalTime)
             continue
-        process_id_list_FCFS.append(processno[i]+1)
-        process_number_ended.append(processno[i]+1)
+        process_id_list_FCFS.append(processno[i])
+        process_number_ended.append(processno[i])
         waitingtime[i]=totalTime #before adding burst time
         totalTime+=burst[i]
         run_time_list_FCFS.append(totalTime)
@@ -119,24 +106,18 @@ def FCFS_schedule():
         turnaroundtime[i]=totalTime-arriv[i]
         finished[i] = 1
         #add context switching TIME
-        if (contextSwitch != 0 and isAnyoneNext(totalTime)):
-            process_id_list_FCFS.append(1)
+        if (contextSwitch != 0 and isAnyoneNext(totalTime,finished,arriv,n)):
+            process_id_list_FCFS.append(0)
             totalTime+=contextSwitch
             run_time_list_FCFS.append(totalTime)
 
-    process_id_list_FCFS.append(0)
+    process_id_list_FCFS.append(-1)
     run_time_list_FCFS.append(totalTime)
 
     W_turnaroundtime=turnaroundtime/burst
     AVG = np.average(turnaroundtime)
     AVG_W = np.average(W_turnaroundtime)
-    '''
-    print("waitingtime",waitingtime,"\n")
-    print("turnaroundtime",turnaroundtime,"\n")
-    print("W_turnaroundtime",W_turnaroundtime,"\n")
-    print("AVG : ",AVG,"\n")
-    print("AVG_W : ",AVG_W,"\n")
-    '''
+    #write results to file
     w_file.write("# "+"waiting time "+" turn around time "+" weighted turn around time "+"\n")
     for i in range(n):
      w_file.write(str(i+1)
@@ -144,25 +125,14 @@ def FCFS_schedule():
      +"         | "+str(float("{0:.1f}".format(turnaroundtime[i])))
      +"                          | "+
      str(float("{0:.1f}".format(W_turnaroundtime[i])))+"\n")
-    
     w_file.write("average turnaround time : "+str(float("{0:.2f}".format(AVG)))+"\n")
     w_file.write("average weighted turnaround time : "+str(float("{0:.2f}".format(AVG_W)))+"\n")
-
+    #draw diagram
     plt.step(run_time_list_FCFS,process_id_list_FCFS,where='pre',label='FCFS')
     plt.plot(end_time,process_number_ended, 'C0o', alpha=0.5,label='end time')
-    processno2 = np.copy(processno)
-    for i in range(n):
-        processno2[i] = processno2[i] + 1
-    plt.plot(arriv,processno2, 'ro', alpha=0.5,label='start time')
+    plt.plot(arriv,processno, 'ro', alpha=0.5,label='start time')
     plt.legend()
     plt.show()
-
-def check_if_all_finished():
-    for i in range(n):
-        if (finished[i] == 0):
-            return False
-    
-    return True
 
 def RR_schedule():
     end_time=[]
@@ -170,16 +140,14 @@ def RR_schedule():
     process_id_list_RR =[]
     run_time_list_RR=[]
     totalTime=0
-    process_id_list_RR.append(0)
-    process_id_list_RR.append(processno[0])
-    run_time_list_RR.append(0)
+    process_id_list_RR.append(-1)
     run_time_list_RR.append(0)
     i=0
 
-    while(not check_if_all_finished()):
+    while(not check_if_all_finished(finished,n)):
         if(arriv[i]<totalTime and finished[i]==0):
-            process_id_list_RR.append(processno[i]+1)
-            if(remaining_time[i]>=quantum):
+            process_id_list_RR.append(processno[i])
+            if(remaining_time[i]>quantum):
                 totalTime+=quantum
                 remaining_time[i]-=quantum
             else :
@@ -187,22 +155,22 @@ def RR_schedule():
                 remaining_time[i]=0
                 finished[i]=1
                 finish_time[i]=totalTime
-                process_number_ended.append(processno[i]+1)
+                process_number_ended.append(processno[i])
                 end_time.append(totalTime)
             run_time_list_RR.append(totalTime)
             #add context switching TIME
-            if(contextSwitch != 0 and isAnyoneNext(totalTime)):
-                process_id_list_RR.append(1)
+            if(contextSwitch != 0 and isAnyoneNext(totalTime,finished,arriv,n)):
+                process_id_list_RR.append(0)
                 totalTime+=contextSwitch
                 run_time_list_RR.append(totalTime)
         else:
-            if not isAnyoneNext(totalTime):
-                process_id_list_RR.append(0)
+            if not isAnyoneNext(totalTime,finished,arriv,n):
+                process_id_list_RR.append(-1)
                 totalTime+=quantum
                 run_time_list_RR.append(totalTime)
         i = (i+1) % (n)
 
-    process_id_list_RR.append(0)
+    process_id_list_RR.append(-1)
     run_time_list_RR.append(totalTime)
 
     waitingtime=finish_time-burst
@@ -210,13 +178,7 @@ def RR_schedule():
     W_turnaroundtime=turnaroundtime/burst
     AVG = np.average(turnaroundtime)
     AVG_W = np.average(W_turnaroundtime)
-    '''
-    print("waitingtime",waitingtime,"\n")
-    print("turnaroundtime",turnaroundtime,"\n")
-    print("W_turnaroundtime",W_turnaroundtime,"\n")
-    print("AVG : ",AVG,"\n")
-    print("AVG_W : ",AVG_W,"\n")
-    '''
+    #write results to file
     w_file.write("# "+"waiting time "+" turn around time "+" weighted turn around time "+"\n")
     for i in range(n):
      w_file.write(str(i+1)
@@ -224,16 +186,12 @@ def RR_schedule():
      +"         | "+str(float("{0:.1f}".format(turnaroundtime[i])))
      +"                          | "+
      str(float("{0:.1f}".format(W_turnaroundtime[i])))+"\n")
-    
     w_file.write("average turnaround time : "+str(float("{0:.2f}".format(AVG)))+"\n")
     w_file.write("average weighted turnaround time : "+str(float("{0:.2f}".format(AVG_W)))+"\n")
-    
+    #draw diagram
     plt.step(run_time_list_RR,process_id_list_RR,where='pre',label='RR')
     plt.plot(end_time,process_number_ended, 'C0o', alpha=0.5,label='end time')
-    processno2 = np.copy(processno)
-    for i in range(n):
-        processno2[i] = processno2[i] + 1
-    plt.plot(arriv,processno2, 'ro', alpha=0.5, label='arrival time')
+    plt.plot(arriv,processno, 'ro', alpha=0.5, label='arrival time')
     plt.legend()
     plt.show()
 
@@ -243,25 +201,23 @@ def HPF_schedule():
     process_id_list_HPF =[]
     run_time_list_HPF=[]
     totalTime=0
-    process_id_list_HPF.append(0)
-    process_id_list_HPF.append(processno[0])
+    process_id_list_HPF.append(-1)
     run_time_list_HPF.append(0)
-    run_time_list_HPF.append(0)
-    #ALGORITHM
 
-    while(not check_if_all_finished()):
+    #ALGORITHM
+    while(not check_if_all_finished(finished,n)):
         i = 0
         while(i<n):
             if(totalTime>arriv[i] and finished[i] == 0):
                 break
             i += 1
         if i == n:
-            process_id_list_HPF.append(0)
+            process_id_list_HPF.append(-1)
             totalTime+=quantum
             run_time_list_HPF.append(totalTime)
             continue
-        process_id_list_HPF.append(processno[i]+1)
-        process_number_ended.append(processno[i]+1)
+        process_id_list_HPF.append(processno[i])
+        process_number_ended.append(processno[i])
         waitingtime[i]=totalTime #before adding burst time
         totalTime+=burst[i]
         run_time_list_HPF.append(totalTime)
@@ -269,24 +225,17 @@ def HPF_schedule():
         turnaroundtime[i]=totalTime-arriv[i]
         finished[i] = 1
         #add context switching TIME
-        if(contextSwitch != 0 and isAnyoneNext(totalTime)):
-            process_id_list_HPF.append(1)
+        if(contextSwitch != 0 and isAnyoneNext(totalTime,finished,arriv,n)):
+            process_id_list_HPF.append(0)
             totalTime+=contextSwitch
             run_time_list_HPF.append(totalTime)
 
-    process_id_list_HPF.append(0)
+    process_id_list_HPF.append(-1)
     run_time_list_HPF.append(totalTime)
-
     W_turnaroundtime=turnaroundtime/burst
     AVG = np.average(turnaroundtime)
     AVG_W = np.average(W_turnaroundtime)
-    '''
-    print("waitingtime",waitingtime,"\n")
-    print("turnaroundtime",turnaroundtime,"\n")
-    print("W_turnaroundtime",W_turnaroundtime,"\n")
-    print("AVG : ",AVG,"\n")
-    print("AVG_W : ",AVG_W,"\n")
-    '''
+    #write results to file
     w_file.write("# "+"waiting time "+" turn around time "+" weighted turn around time "+"\n")
     for i in range(n):
      w_file.write(str(i+1)
@@ -294,16 +243,12 @@ def HPF_schedule():
      +"         | "+str(float("{0:.1f}".format(turnaroundtime[i])))
      +"                          | "+
      str(float("{0:.1f}".format(W_turnaroundtime[i])))+"\n")
-    
     w_file.write("average turnaround time : "+str(float("{0:.2f}".format(AVG)))+"\n")
     w_file.write("average weighted turnaround time : "+str(float("{0:.2f}".format(AVG_W)))+"\n")
-
+    #draw diagram
     plt.step(run_time_list_HPF,process_id_list_HPF,where='pre',label='HPF')
     plt.plot(end_time,process_number_ended, 'C0o', alpha=0.5,label='end time')
-    processno2 = np.copy(processno)
-    for i in range(n):
-        processno2[i] = processno2[i] + 1
-    plt.plot(arriv,processno2, 'ro', alpha=0.5,label='start time')
+    plt.plot(arriv,processno, 'ro', alpha=0.5,label='start time')
     plt.legend()
     plt.show()
 
@@ -318,32 +263,29 @@ def SRTN_schedule():
     run_time_list_SRTN=[]
     totalTime=0
     previous = -1
-    first = 0
-    process_id_list_SRTN.append(0)
+    process_id_list_SRTN.append(-1)
     run_time_list_SRTN.append(0)
     idle = 0
-    #process_id_list_SRTN.append(processno[0])
-    #run_time_list_SRTN.append(0)
     #ALGORITHM
-    while(not check_if_all_finished()):
+    while(not check_if_all_finished(finished,n)):
         i=0
         while i < n:
             if (arriv[i] <= totalTime and finished[i] == 0):
                 break
             i+=1
         if i == n:
-            process_id_list_SRTN.append(0)
+            process_id_list_SRTN.append(-1)
             totalTime+=quantum
             run_time_list_SRTN.append(totalTime)
             idle = 1
             continue
         if (previous != processno[i]):
             if(contextSwitch != 0 and previous != -1 and idle != 1):
-                process_id_list_SRTN.append(1)
+                process_id_list_SRTN.append(0)
                 totalTime+=contextSwitch
                 run_time_list_SRTN.append(totalTime)
             previous = processno[i]
-        process_id_list_SRTN.append(processno[i]+1)
+        process_id_list_SRTN.append(processno[i])
         if(remaining_time[i]> quantum):
             totalTime+=quantum
             remaining_time[i]-=quantum
@@ -362,19 +304,12 @@ def SRTN_schedule():
         arriv = list(arriv)
         prio = list(prio)
         idle = 0
-    process_id_list_SRTN.append(0)
+    process_id_list_SRTN.append(-1)
     run_time_list_SRTN.append(totalTime)
-
     W_turnaroundtime=turnaroundtime/burst
     AVG = np.average(turnaroundtime)
     AVG_W = np.average(W_turnaroundtime)
-    '''
-    print("waitingtime",waitingtime,"\n")
-    print("turnaroundtime",turnaroundtime,"\n")
-    print("W_turnaroundtime",W_turnaroundtime,"\n")
-    print("AVG : ",AVG,"\n")
-    print("AVG_W : ",AVG_W,"\n")
-    '''
+    #write results to file
     w_file.write("# "+"waiting time "+" turn around time "+" weighted turn around time "+"\n")
     for i in range(n):
      w_file.write(str(i+1)
@@ -382,24 +317,20 @@ def SRTN_schedule():
      +"         | "+str(float("{0:.1f}".format(turnaroundtime[i])))
      +"                          | "+
      str(float("{0:.1f}".format(W_turnaroundtime[i])))+"\n")
-    
     w_file.write("average turnaround time : "+str(float("{0:.2f}".format(AVG)))+"\n")
     w_file.write("average weighted turnaround time : "+str(float("{0:.2f}".format(AVG_W)))+"\n")
 
+    #draw diagram
     plt.step(run_time_list_SRTN,process_id_list_SRTN,where='pre',label='SRTN')
-    process_number_ended2 = np.copy(process_number_ended)
-    for i in range(n):
-        process_number_ended2[i] = process_number_ended2[i] + 1
-    plt.plot(end_time,process_number_ended2, 'C0o', alpha=0.5,label='end time')
-    processno2 = np.copy(processno)
-    for i in range(n):
-        processno2[i] = processno2[i] + 1
-    plt.plot(arriv,processno2, 'ro', alpha=0.5,label='arrival time')
+    plt.plot(end_time,process_number_ended, 'C0o', alpha=0.5,label='end time')
+    plt.plot(arriv,processno, 'ro', alpha=0.5,label='arrival time')
     plt.legend()
     plt.show()
 
+
+#call function based on user choice
 if(mode == 1):
-    #sort w.r.t priority
+    #sort w.r.t priority descendingly
     prio, processno,burst,arriv = zip(*sorted(zip(prio, processno,burst,arriv),reverse = True))
     remaining_time=np.copy(burst)
     HPF_schedule()
@@ -419,6 +350,8 @@ elif(mode==4):
     remaining_time=np.copy(burst)
     SRTN_schedule()
 
-r.close()
+print("your results are saved in "+write+ " file")
+
+#close write file
 w_file.close() 
 
