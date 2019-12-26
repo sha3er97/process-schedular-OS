@@ -31,7 +31,7 @@ python process_generator.py readFile.txt WriteFile.txt
 
 #### our random process generator work as follows:
 ```
-First lineshould include the number of processes.
+First line should include the number of processes.
 Second line should include μ and σ of arrival time distribution separated by a whitespace.
 Third line should include μ and σ of burst time distribution separated by a whitespace.
 Fourth line should include λ of prioritydistribution  
@@ -51,7 +51,7 @@ python scheduler.py
 ```
 First line should include the number of processes.
 Each line contains the parameters for one process only, separated by a white space, in the following order:
-process number, arrival time, burst time andpriority.
+process number, arrival time, burst time and priority.
 ```
 
 2. context switching time (**if needed**).
@@ -74,7 +74,7 @@ process number, arrival time, burst time andpriority.
  4. SRTN :
  ![SRTN](/SRTN.png)
 
-##### above graphs are with 0 time context switching for simplicity but you can add any number you want as this fig :
+##### -> above graphs are with 0 time context switching for simplicity but you can add any number you want as this fig :
 ![FCFS_CSS](/FCFS_CS2.png)
 
 ### file output :
